@@ -161,7 +161,6 @@ const ShortcutRow = ({
           const pipeId = shortcut.replace("pipe_", "");
           updateSettings({
             pipeShortcuts: {
-              ...settings.pipeShortcuts,
               [pipeId]: keys,
             },
           });
