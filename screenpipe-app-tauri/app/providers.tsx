@@ -8,10 +8,8 @@ import { forwardRef } from "react";
 import { store as SettingsStore, useSettings } from "@/lib/hooks/use-settings";
 import { profilesStore as ProfilesStore } from "@/lib/hooks/use-profiles";
 
-export const Providers = forwardRef<
-  HTMLDivElement,
-  { children: React.ReactNode }
->(({ children }, ref) => {
+// Inner component that has access to the settings store
+const ProviderInner = ({ children }: { children: React.ReactNode }) => {
   const { settings, isHydrated } = useSettings();
 
   useEffect(() => {
@@ -34,12 +32,21 @@ export const Providers = forwardRef<
   }, [isHydrated, settings.analyticsEnabled]);
 
   return (
+    <ProfilesStore.Provider>
+      <ChangelogDialogProvider>
+        <PostHogProvider client={posthog}>{children}</PostHogProvider>
+      </ChangelogDialogProvider>
+    </ProfilesStore.Provider>
+  );
+};
+
+export const Providers = forwardRef<
+  HTMLDivElement,
+  { children: React.ReactNode }
+>(({ children }, ref) => {
+  return (
     <SettingsStore.Provider>
-      <ProfilesStore.Provider>
-        <ChangelogDialogProvider>
-          <PostHogProvider client={posthog}>{children}</PostHogProvider>
-        </ChangelogDialogProvider>
-      </ProfilesStore.Provider>
+      <ProviderInner>{children}</ProviderInner>
     </SettingsStore.Provider>
   );
 });

@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::Config;
 use tauri::Emitter;
-use tauri::api::path::app_local_data_dir;
+use dirs;
 use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
@@ -593,19 +593,24 @@ fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
     Ok(Shortcut::new(Some(modifiers), code))
 }
 
-fn load_analytics_enabled(config: &Config) -> bool {
-    if let Some(mut base_dir) = app_local_data_dir(config) {
-        base_dir.push("screenpipe");
-        let store_path = base_dir.join("store.bin");
-        if let Ok(mut file) = File::open(store_path) {
-            let mut contents = String::new();
-            if file.read_to_string(&mut contents).is_ok() {
-                if let Ok(value) = serde_json::from_str::<Value>(&contents) {
-                    return value
-                        .get("analyticsEnabled")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(true);
-                }
+fn load_analytics_enabled(_config: &Config) -> bool {
+    // Use the proper platform-specific data directory
+    // On macOS: ~/Library/Application Support/screenpipe  
+    // On Windows: %APPDATA%\screenpipe
+    // On Linux: ~/.local/share/screenpipe
+    let base_dir = dirs::data_dir()
+        .map(|d| d.join("screenpipe"))
+        .unwrap_or_else(|| dirs::home_dir().unwrap().join(".screenpipe"));
+    let store_path = base_dir.join("store.bin");
+    
+    if let Ok(mut file) = File::open(store_path) {
+        let mut contents = String::new();
+        if file.read_to_string(&mut contents).is_ok() {
+            if let Ok(value) = serde_json::from_str::<Value>(&contents) {
+                return value
+                    .get("analyticsEnabled")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(true);
             }
         }
     }
@@ -629,7 +634,6 @@ async fn main() {
             },
         )))
     } else {
-        sentry::shutdown();
         None
     };
 
