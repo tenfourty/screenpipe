@@ -10,10 +10,12 @@ use serde_json::Value;
 use std::env;
 use std::fs;
 use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::Config;
 use tauri::Emitter;
+use tauri::api::path::app_local_data_dir;
 use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
@@ -591,18 +593,45 @@ fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
     Ok(Shortcut::new(Some(modifiers), code))
 }
 
+fn load_analytics_enabled(config: &Config) -> bool {
+    if let Some(mut base_dir) = app_local_data_dir(config) {
+        base_dir.push("screenpipe");
+        let store_path = base_dir.join("store.bin");
+        if let Ok(mut file) = File::open(store_path) {
+            let mut contents = String::new();
+            if file.read_to_string(&mut contents).is_ok() {
+                if let Ok(value) = serde_json::from_str::<Value>(&contents) {
+                    return value
+                        .get("analyticsEnabled")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(true);
+                }
+            }
+        }
+    }
+    true
+}
+
 #[tokio::main]
 async fn main() {
     let _ = fix_path_env::fix();
 
-    // Initialize Sentry early
-    let sentry_guard = sentry::init((
-        "https://8770b0b106954e199df089bf4ffa89cf@o4507617161314304.ingest.us.sentry.io/4508716587876352", // Replace with your actual Sentry DSN
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            ..Default::default()
-        },
-    ));
+    let context = tauri::generate_context!();
+
+    let analytics_enabled = load_analytics_enabled(context.config());
+
+    let sentry_guard = if analytics_enabled {
+        Some(sentry::init((
+            "https://8770b0b106954e199df089bf4ffa89cf@o4507617161314304.ingest.us.sentry.io/4508716587876352", // Replace with your actual Sentry DSN
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        )))
+    } else {
+        sentry::shutdown();
+        None
+    };
 
     // Set permanent OLLAMA_ORIGINS env var on Windows if not present
     #[cfg(target_os = "windows")]
@@ -626,7 +655,7 @@ async fn main() {
 
     let sidecar_state = SidecarState(Arc::new(tokio::sync::Mutex::new(None)));
     #[allow(clippy::single_match)]
-    let app = tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_http::init())
@@ -665,8 +694,13 @@ async fn main() {
                 .expect("Can't focus window!");
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_sentry::init(&sentry_guard))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+
+    if let Some(ref guard) = sentry_guard {
+        builder = builder.plugin(tauri_plugin_sentry::init(guard));
+    }
+
+    let app = builder
         .manage(sidecar_state)
         .invoke_handler(tauri::generate_handler![
             spawn_screenpipe,
@@ -889,7 +923,7 @@ async fn main() {
             });
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application");
 
     // set_tray_unhealth_icon(app.app_handle().clone());
