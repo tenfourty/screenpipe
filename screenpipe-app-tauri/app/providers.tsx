@@ -12,17 +12,26 @@ export const Providers = forwardRef<
   HTMLDivElement,
   { children: React.ReactNode }
 >(({ children }, ref) => {
+  const { settings, isHydrated } = useSettings();
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isDebug = process.env.TAURI_ENV_DEBUG === "true";
-      if (isDebug) return;
+    if (typeof window === "undefined") return;
+
+    const isDebug = process.env.TAURI_ENV_DEBUG === "true";
+    if (isDebug) return;
+
+    if (!isHydrated) return;
+
+    if (settings.analyticsEnabled) {
       posthog.init("phc_Bt8GoTBPgkCpDrbaIZzJIEYt0CrJjhBiuLaBck1clce", {
         api_host: "https://eu.i.posthog.com",
         person_profiles: "identified_only",
         capture_pageview: false,
       });
+    } else {
+      posthog.opt_out_capturing();
     }
-  }, []);
+  }, [isHydrated, settings.analyticsEnabled]);
 
   return (
     <SettingsStore.Provider>
