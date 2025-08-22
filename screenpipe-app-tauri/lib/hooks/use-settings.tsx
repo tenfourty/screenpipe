@@ -297,8 +297,12 @@ export const getStore = async () => {
 				autoSave: false,
 			});
 		})();
-	}
-	return storePromise;
+        }
+        return storePromise;
+};
+
+export const resetStore = () => {
+        storePromise = null;
 };
 
 const tauriStorage: PersistStorage = {

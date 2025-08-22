@@ -1,6 +1,6 @@
 "use client";
 
-import { getStore, useSettings } from "@/lib/hooks/use-settings";
+import { getStore, resetStore, useSettings } from "@/lib/hooks/use-settings";
 
 import React, { useEffect, useState } from "react";
 import NotificationHandler from "@/components/notification-handler";
@@ -114,6 +114,8 @@ export default function Home() {
       listen<string>("switch-profile", async (event) => {
         const profile = event.payload;
         setActiveProfile(profile);
+        resetStore();
+        await reloadStore();
 
         toast({
           title: "profile switched",
