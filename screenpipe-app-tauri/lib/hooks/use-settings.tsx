@@ -16,6 +16,7 @@ import { flattenObject, unflattenObject } from "../utils";
 import { useEffect, useRef, useCallback } from "react";
 import posthog from "posthog-js";
 import localforage from "localforage";
+import merge from "lodash/merge";
 
 export type VadSensitivity = "low" | "medium" | "high";
 
@@ -399,11 +400,8 @@ export const store = createContextStore<StoreModel>(
                         isHydrated: false,
                         setSettings: action((state, payload) => {
                                 console.log(state, payload);
-                                state.settings = {
-                                        ...state.settings,
-                                        ...payload,
-				};
-			}),
+                                state.settings = merge({}, state.settings, payload);
+                        }),
 			resetSettings: action((state) => {
 				state.settings = createDefaultSettingsObject();
 			}),

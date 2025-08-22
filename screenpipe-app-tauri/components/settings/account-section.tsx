@@ -107,7 +107,6 @@ export function AccountSection() {
               if (settings.user) {
                 updateSettings({
                   user: {
-                    ...settings.user,
                     stripe_connected: true,
                   },
                 });
@@ -458,8 +457,7 @@ export function AccountSection() {
 
                         const { api_key } = await response.json();
                         if (settings.user) {
-                          const updatedUser = { ...settings.user, api_key };
-                          updateSettings({ user: updatedUser });
+                          updateSettings({ user: { api_key } });
                           toast({
                             title: "api key generated",
                             description: "you can now start building pipes",
@@ -566,11 +564,9 @@ export function AccountSection() {
                       className="h-9 w-9"
                       onClick={() => {
                         if (settings.user) {
-                          const updatedUser = {
-                            ...settings.user,
-                            stripe_connected: false,
-                          };
-                          updateSettings({ user: updatedUser });
+                          updateSettings({
+                            user: { stripe_connected: false },
+                          });
                           toast({
                             title: "stripe disconnected",
                             description:
@@ -708,11 +704,7 @@ export function AccountSection() {
 
                       // Update the main settings after successful profile update
                       if (settings.user) {
-                        const updatedUser = {
-                          ...settings.user,
-                          ...profileForm,
-                        };
-                        updateSettings({ user: updatedUser });
+                        updateSettings({ user: profileForm });
                       }
 
                       toast({
