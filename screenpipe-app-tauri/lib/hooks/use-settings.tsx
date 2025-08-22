@@ -112,8 +112,8 @@ export type Settings = {
 	useChineseMirror: boolean; // Add this line
 	embeddedLLM: EmbeddedLLMConfig;
 	languages: Language[];
-	enableBeta: boolean;
-	isFirstTimeUser: boolean;
+        enableBeta: boolean;
+        hasCompletedOnboarding: boolean;
 	autoStartEnabled: boolean;
 	enableFrameCache: boolean; // Add this line
 	enableUiMonitoring: boolean; // Add this line
@@ -182,8 +182,8 @@ const DEFAULT_SETTINGS: Settings = {
 		model: "llama3.2:1b-instruct-q4_K_M",
 		port: 11434,
 	},
-	enableBeta: false,
-	isFirstTimeUser: true,
+        enableBeta: false,
+        hasCompletedOnboarding: false,
 	autoStartEnabled: true,
 	enableFrameCache: true, // Add this line
 	enableUiMonitoring: false, // Change from true to false
