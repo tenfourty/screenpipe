@@ -26,7 +26,7 @@ import { LoginDialog } from "../components/login-dialog";
 import { ModelDownloadTracker } from "../components/model-download-tracker";
 
 export default function Home() {
-  const { settings, updateSettings, loadUser, reloadStore } = useSettings();
+  const { settings, updateSettings, loadUser, reloadStore, isHydrated } = useSettings();
   const { setActiveProfile } = useProfiles();
   const { toast } = useToast();
   const { showOnboarding, setShowOnboarding } = useOnboarding();
@@ -36,10 +36,10 @@ export default function Home() {
   const isProcessingRef = React.useRef(false);
 
   useEffect(() => {
-    if (settings.user?.token) {
+    if (isHydrated && settings.user?.token) {
       loadUser(settings.user.token);
     }
-  }, [settings.user.token]);
+  }, [isHydrated, settings.user.token]);
 
   useEffect(() => {
     const getAudioDevices = async () => {
@@ -58,7 +58,7 @@ export default function Home() {
           if (url.includes("api_key=")) {
             const apiKey = parsedUrl.searchParams.get("api_key");
             if (apiKey) {
-              updateSettings({ user: { token: apiKey } });
+              await updateSettings({ user: { token: apiKey } });
               toast({
                 title: "logged in!",
                 description: "you have been logged in",

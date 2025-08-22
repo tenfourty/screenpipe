@@ -12,7 +12,7 @@ import {
 import { LazyStore, LazyStore as TauriStore } from "@tauri-apps/plugin-store";
 import { localDataDir } from "@tauri-apps/api/path";
 import { flattenObject, unflattenObject } from "../utils";
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import posthog from "posthog-js";
 import localforage from "localforage";
 
@@ -239,10 +239,11 @@ const DEFAULT_IGNORED_WINDOWS_PER_OS: Record<string, string[]> = {
 
 // Model definition
 export interface StoreModel {
-	settings: Settings;
-	setSettings: Action<StoreModel, Partial<Settings>>;
-	resetSettings: Action<StoreModel>;
-	resetSetting: Action<StoreModel, keyof Settings>;
+        settings: Settings;
+        isHydrated: boolean;
+        setSettings: Action<StoreModel, Partial<Settings>>;
+        resetSettings: Action<StoreModel>;
+        resetSetting: Action<StoreModel, keyof Settings>;
 }
 
 export function createDefaultSettingsObject(): Settings {
@@ -301,17 +302,17 @@ export const getStore = async () => {
 };
 
 const tauriStorage: PersistStorage = {
-	getItem: async (_key: string) => {
-		const tauriStore = await getStore();
-		const allKeys = await tauriStore.keys();
-		const values: Record<string, any> = {};
+        getItem: async (_key: string) => {
+                const tauriStore = await getStore();
+                const allKeys = await tauriStore.keys();
+                const values: Record<string, any> = {};
 
 		for (const k of allKeys) {
 			values[k] = await tauriStore.get(k);
 		}
 
-		return { settings: unflattenObject(values) };
-	},
+                return { settings: unflattenObject(values), isHydrated: true };
+        },
 	setItem: async (_key: string, value: any) => {
 		const tauriStore = await getStore();
 
@@ -344,14 +345,15 @@ const tauriStorage: PersistStorage = {
 };
 
 export const store = createContextStore<StoreModel>(
-	persist(
-		{
-			settings: createDefaultSettingsObject(),
-			setSettings: action((state, payload) => {
-				console.log(state, payload);
-				state.settings = {
-					...state.settings,
-					...payload,
+        persist(
+                {
+                        settings: createDefaultSettingsObject(),
+                        isHydrated: false,
+                        setSettings: action((state, payload) => {
+                                console.log(state, payload);
+                                state.settings = {
+                                        ...state.settings,
+                                        ...payload,
 				};
 			}),
 			resetSettings: action((state) => {
@@ -370,12 +372,53 @@ export const store = createContextStore<StoreModel>(
 );
 
 export function useSettings() {
-	const settings = store.useStoreState((state) => state.settings);
-	const setSettings = store.useStoreActions((actions) => actions.setSettings);
-	const resetSettings = store.useStoreActions(
-		(actions) => actions.resetSettings,
-	);
-	const resetSetting = store.useStoreActions((actions) => actions.resetSetting);
+        const settings = store.useStoreState((state) => state.settings);
+        const isHydrated = store.useStoreState((state) => state.isHydrated);
+        const setSettings = store.useStoreActions((actions) => actions.setSettings);
+        const resetSettingsAction = store.useStoreActions(
+                (actions) => actions.resetSettings,
+        );
+        const resetSettingAction = store.useStoreActions(
+                (actions) => actions.resetSetting,
+        );
+
+        const hydrationQueue = useRef<(() => void)[]>([]);
+
+        const runOrQueue = useCallback(
+                (fn: () => void): Promise<void> => {
+                        if (isHydrated) {
+                                fn();
+                                return Promise.resolve();
+                        }
+                        return new Promise((resolve) => {
+                                hydrationQueue.current.push(() => {
+                                        fn();
+                                        resolve();
+                                });
+                        });
+                },
+                [isHydrated],
+        );
+
+        useEffect(() => {
+                if (isHydrated && hydrationQueue.current.length) {
+                        hydrationQueue.current.forEach((fn) => fn());
+                        hydrationQueue.current = [];
+                }
+        }, [isHydrated]);
+
+        const updateSettings = useCallback(
+                (payload: Partial<Settings>) => runOrQueue(() => setSettings(payload)),
+                [runOrQueue, setSettings],
+        );
+        const resetSettings = useCallback(
+                () => runOrQueue(() => resetSettingsAction()),
+                [runOrQueue, resetSettingsAction],
+        );
+        const resetSetting = useCallback(
+                (key: keyof Settings) => runOrQueue(() => resetSettingAction(key)),
+                [runOrQueue, resetSettingAction],
+        );
 
 	useEffect(() => {
 		if (settings.user?.id) {
@@ -409,63 +452,63 @@ export function useSettings() {
 			: `${homeDirPath}\\.screenpipe`;
 	};
 
-	const loadUser = async (token: string, forceReload = false) => {
-		try {
-			// try to get from cache first (unless force reload)
-			const cacheKey = `user_data_${token}`;
-			if (!forceReload) {
-				const cached = await localforage.getItem<{
-					data: User;
-					timestamp: number;
-				}>(cacheKey);
+        const loadUser = async (token: string, forceReload = false) => {
+                try {
+                        // try to get from cache first (unless force reload)
+                        const cacheKey = `user_data_${token}`;
+                        if (!forceReload) {
+                                const cached = await localforage.getItem<{
+                                        data: User;
+                                        timestamp: number;
+                                }>(cacheKey);
 
-				// use cache if less than 30s old
-				if (cached && Date.now() - cached.timestamp < 30000) {
-					setSettings({
-						user: cached.data,
-					});
-					return;
-				}
-			}
+                                // use cache if less than 30s old
+                                if (cached && Date.now() - cached.timestamp < 30000) {
+                                        await updateSettings({
+                                                user: cached.data,
+                                        });
+                                        return;
+                                }
+                        }
 
-			const response = await fetch(`https://screenpi.pe/api/user`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({ token }),
-			});
+                        const response = await fetch(`https://screenpi.pe/api/user`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ token }),
+                        });
 
-			if (!response.ok) {
-				throw new Error("failed to verify token");
-			}
+                        if (!response.ok) {
+                                throw new Error("failed to verify token");
+                        }
 
-			const data = await response.json();
-			const userData = {
-				...data.user,
-			} as User;
+                        const data = await response.json();
+                        const userData = {
+                                ...data.user,
+                        } as User;
 
-			// if user was not logged in, send posthog event app_login with email
-			if (!settings.user?.id) {
-				posthog.capture("app_login", {
-					email: userData.email,
-				});
-			}
+                        // if user was not logged in, send posthog event app_login with email
+                        if (!settings.user?.id) {
+                                posthog.capture("app_login", {
+                                        email: userData.email,
+                                });
+                        }
 
-			// cache the result
-			await localforage.setItem(cacheKey, {
-				data: userData,
-				timestamp: Date.now(),
-			});
+                        // cache the result
+                        await localforage.setItem(cacheKey, {
+                                data: userData,
+                                timestamp: Date.now(),
+                        });
 
-			setSettings({
-				user: userData,
-			});
-		} catch (err) {
-			console.error("failed to load user:", err);
-			throw err;
-		}
-	};
+                        await updateSettings({
+                                user: userData,
+                        });
+                } catch (err) {
+                        console.error("failed to load user:", err);
+                        throw err;
+                }
+        };
 
 	const reloadStore = async () => {
 		const store = await getStore();
@@ -478,16 +521,17 @@ export function useSettings() {
 			values[k] = await store.get(k);
 		}
 
-		setSettings(unflattenObject(values));
-	};
+                await updateSettings(unflattenObject(values));
+        };
 
-	return {
-		settings,
-		updateSettings: setSettings,
-		resetSettings,
-		reloadStore,
-		loadUser,
-		resetSetting,
-		getDataDir,
-	};
+        return {
+                settings,
+                updateSettings,
+                resetSettings,
+                reloadStore,
+                loadUser,
+                resetSetting,
+                getDataDir,
+                isHydrated,
+        };
 }
