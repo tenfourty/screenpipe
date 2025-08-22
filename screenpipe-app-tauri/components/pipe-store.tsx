@@ -65,7 +65,7 @@ const corePipes: string[] = [];
 export const PipeStore: React.FC = () => {
   const { health } = useHealthCheck();
   const [selectedPipe, setSelectedPipe] = useState<PipeWithStatus | null>(null);
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, isHydrated } = useSettings();
   const [pipes, setPipes] = useState<PipeWithStatus[]>([]);
   const [installedPipes, setInstalledPipes] = useState<InstalledPipe[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -129,8 +129,10 @@ export const PipeStore: React.FC = () => {
   }, [searchQuery, filteredPipes.length]);
 
   const fetchStorePlugins = async () => {
+    const token = settings.user?.token;
+    if (!token) return;
     try {
-      const pipeApi = await PipeApi.create(settings.user?.token!);
+      const pipeApi = await PipeApi.create(token);
       const plugins = await pipeApi.listStorePlugins();
 
       // Create PipeWithStatus objects for store plugins
@@ -1188,8 +1190,10 @@ export const PipeStore: React.FC = () => {
   }, [checkForUpdates]);
 
   useEffect(() => {
-    fetchStorePlugins();
-  }, [installedPipes, purchaseHistory]);
+    if (isHydrated && settings.user?.token) {
+      fetchStorePlugins();
+    }
+  }, [installedPipes, purchaseHistory, isHydrated, settings.user?.token]);
 
   useEffect(() => {
     fetchPurchaseHistory();
