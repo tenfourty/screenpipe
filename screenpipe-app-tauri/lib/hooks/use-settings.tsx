@@ -11,6 +11,7 @@ import {
 } from "easy-peasy";
 import { LazyStore, LazyStore as TauriStore } from "@tauri-apps/plugin-store";
 import { localDataDir } from "@tauri-apps/api/path";
+import { rename, remove, exists } from "@tauri-apps/plugin-fs";
 import { flattenObject, unflattenObject } from "../utils";
 import { useEffect, useRef, useCallback } from "react";
 import posthog from "posthog-js";
@@ -317,27 +318,70 @@ const tauriStorage: PersistStorage = {
 
                 return { settings: unflattenObject(values), isHydrated: true };
         },
-	setItem: async (_key: string, value: any) => {
-		const tauriStore = await getStore();
+        setItem: async (_key: string, value: any) => {
+                delete value.settings.customSettings;
+                const flattenedValue = flattenObject(value.settings);
 
-		delete value.settings.customSettings;
-		const flattenedValue = flattenObject(value.settings);
+                const dir = await localDataDir();
+                const profilesStore = new TauriStore(`${dir}/screenpipe/profiles.bin`, {
+                        autoSave: false,
+                });
+                const activeProfile =
+                        (await profilesStore.get("activeProfile")) || "default";
+                const file =
+                        activeProfile === "default"
+                                ? `store.bin`
+                                : `store-${activeProfile}.bin`;
+                const storePath = `${dir}/screenpipe/${file}`;
+                const tempPath = `${storePath}.tmp`;
+                const backupPath = `${storePath}.bak`;
 
-		// Only delete keys that are present in the new settings
-		for (const key of Object.keys(flattenedValue)) {
-			await tauriStore.delete(key);
-		}
+                const tempStore = new TauriStore(tempPath, { autoSave: false });
 
-		// Set new flattened values
-		for (const [key, val] of Object.entries(flattenedValue)) {
-			if (!key || !key.length) continue;
-			const defaultValue =
-				key in DEFAULT_SETTINGS ? DEFAULT_SETTINGS[key as keyof Settings] : "";
-			await tauriStore.set(key, val === undefined ? defaultValue : val);
-		}
+                try {
+                        for (const [key, val] of Object.entries(flattenedValue)) {
+                                if (!key || !key.length) continue;
+                                const defaultValue =
+                                        key in DEFAULT_SETTINGS
+                                                ? DEFAULT_SETTINGS[key as keyof Settings]
+                                                : "";
+                                await tempStore.set(
+                                        key,
+                                        val === undefined ? defaultValue : val,
+                                );
+                        }
 
-		await tauriStore.save();
-	},
+                        await tempStore.save();
+
+                        if (await exists(storePath)) {
+                                await rename(storePath, backupPath);
+                        }
+
+                        await rename(tempPath, storePath);
+
+                        if (await exists(backupPath)) {
+                                await remove(backupPath);
+                        }
+
+                        resetStore();
+                } catch (err) {
+                        console.error("failed to save settings:", err);
+                        try {
+                                if (await exists(tempPath)) {
+                                        await remove(tempPath);
+                                }
+                                if (await exists(backupPath)) {
+                                        if (await exists(storePath)) {
+                                                await remove(storePath);
+                                        }
+                                        await rename(backupPath, storePath);
+                                }
+                        } catch (rollbackErr) {
+                                console.error("failed to rollback settings:", rollbackErr);
+                        }
+                        throw err;
+                }
+        },
 	removeItem: async (_key: string) => {
 		const tauriStore = await getStore();
 		const keys = await tauriStore.keys();
