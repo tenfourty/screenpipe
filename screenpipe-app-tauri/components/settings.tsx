@@ -64,6 +64,12 @@ export function Settings() {
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
   const { settings } = useSettings();
+  // Reset to account section when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveSection("account");
+    }
+  }, [isOpen]);
 
   const handleProfileChange = async () => {
     toast({
@@ -89,7 +95,6 @@ export function Settings() {
       return;
     }
     if (newProfileName.trim()) {
-      console.log("creating profile", newProfileName.trim());
       createProfile({
         profileName: newProfileName.trim(),
         currentSettings: settings,
@@ -125,9 +130,6 @@ export function Settings() {
     }
   };
 
-  useEffect(() => {
-    console.log(profiles, "profiles");
-  }, [profiles]);
 
   return (
     <Dialog modal={true} open={isOpen} onOpenChange={setSettingsOpen}>
