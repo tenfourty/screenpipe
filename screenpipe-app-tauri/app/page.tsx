@@ -1,13 +1,18 @@
 "use client";
 
-import { getStore, resetStore, useSettings } from "@/lib/hooks/use-settings";
+import {
+  getStore,
+  resetStore,
+  useSettings,
+  awaitSettingsHydration,
+} from "@/lib/hooks/use-settings";
 
 import React, { useEffect, useState } from "react";
 import NotificationHandler from "@/components/notification-handler";
 import Header from "@/components/header";
 import { useToast } from "@/components/ui/use-toast";
 import Onboarding from "@/components/onboarding";
-import { useOnboarding } from "@/lib/hooks/use-onboarding";
+import { OnboardingProvider } from "@/lib/hooks/use-onboarding";
 import { ChangelogDialog } from "@/components/changelog-dialog";
 import { BreakingChangesInstructionsDialog } from "@/components/breaking-changes-instructions-dialog";
 import { useChangelogDialog } from "@/lib/hooks/use-changelog-dialog";
@@ -26,20 +31,53 @@ import { LoginDialog } from "../components/login-dialog";
 import { ModelDownloadTracker } from "../components/model-download-tracker";
 
 export default function Home() {
-  const { settings, updateSettings, loadUser, reloadStore, isHydrated } = useSettings();
+  const { settings, updateSettings, loadUser, reloadStore } = useSettings();
   const { setActiveProfile } = useProfiles();
   const { toast } = useToast();
-  const { showOnboarding, setShowOnboarding } = useOnboarding();
   const { setShowChangelogDialog } = useChangelogDialog();
   const { open: openStatusDialog } = useStatusDialog();
   const { setIsOpen: setSettingsOpen } = useSettingsDialog();
   const isProcessingRef = React.useRef(false);
+  const [isHydrated, setIsHydrated] = React.useState(false);
+  const [shouldShowOnboarding, setShouldShowOnboarding] = React.useState<boolean | null>(null);
 
   useEffect(() => {
-    if (isHydrated && settings.user?.token) {
-      loadUser(settings.user.token);
+    let cancelled = false;
+    (async () => {
+      try {
+        await awaitSettingsHydration();
+        if (!cancelled) {
+          setIsHydrated(true);
+          // Get fresh settings from store after hydration
+          const store = await getStore();
+          const freshSettings = await store.get("settings") as any;
+          const isFirstTime = freshSettings?.isFirstTimeUser ?? false;
+          setShouldShowOnboarding(isFirstTime);
+          if (settings.user?.token) {
+            loadUser(settings.user.token);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to wait for settings hydration in user loading:', error);
+        if (!cancelled) {
+          setIsHydrated(true);
+          setShouldShowOnboarding(false); // Default to not showing on error
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [loadUser]);
+
+  // Create setShowOnboarding function
+  const setShowOnboarding = React.useCallback(async (show: boolean) => {
+    try {
+      await awaitSettingsHydration();
+      await updateSettings({ isFirstTimeUser: show });
+      setShouldShowOnboarding(show);
+    } catch (error) {
+      console.error('Failed to update onboarding settings:', error);
     }
-  }, [isHydrated, settings.user.token]);
+  }, [updateSettings]);
 
   useEffect(() => {
     const getAudioDevices = async () => {
@@ -206,16 +244,29 @@ export default function Home() {
 
   useEffect(() => {
     const checkScreenPermissionRestart = async () => {
-      const restartPending = await localforage.getItem(
-        "screenPermissionRestartPending"
-      );
-      if (restartPending) {
-        setShowOnboarding(true);
+      try {
+        await awaitSettingsHydration();
+        
+        const restartPending = await localforage.getItem(
+          "screenPermissionRestartPending"
+        );
+        
+        if (restartPending) {
+          // Clear the flag first to prevent infinite loop
+          await localforage.removeItem("screenPermissionRestartPending");
+          
+          // Only show onboarding if user is still first time user
+          if (settings.isFirstTimeUser) {
+            setShowOnboarding(true);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check screen permission restart:', error);
       }
     };
 
     checkScreenPermissionRestart();
-  }, [setShowOnboarding]);
+  }, [setShowOnboarding, settings.isFirstTimeUser]);
 
   useEffect(() => {
     const unlisten = listen("cli-login", async (event) => {
@@ -228,23 +279,39 @@ export default function Home() {
     };
   }, []);
 
+  // Show loading until settings are hydrated AND we know the onboarding state
+  if (!isHydrated || shouldShowOnboarding === null) {
+    return (
+      <div className="flex flex-col items-center justify-center flex-1 max-w-screen-2xl mx-auto relative min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center flex-1 max-w-screen-2xl mx-auto relative">
-      <LoginDialog />
-      <ModelDownloadTracker />
-      <NotificationHandler />
-      {showOnboarding ? (
-        <Onboarding />
-      ) : (
-        <>
-          <ChangelogDialog />
-          {/* <BreakingChangesInstructionsDialog /> */}
-          <Header />
-          <div className=" w-full">
-            <PipeStore />
-          </div>
-        </>
-      )}
-    </div>
+    <OnboardingProvider value={{ showOnboarding: shouldShowOnboarding, setShowOnboarding }}>
+      <div className="flex flex-col items-center flex-1 max-w-screen-2xl mx-auto relative">
+        <LoginDialog />
+        <ModelDownloadTracker />
+        <NotificationHandler />
+        <div suppressHydrationWarning>
+          {shouldShowOnboarding ? (
+            <Onboarding />
+          ) : (
+            <>
+              <ChangelogDialog />
+              {/* <BreakingChangesInstructionsDialog /> */}
+              <Header />
+              <div className=" w-full">
+                <PipeStore />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </OnboardingProvider>
   );
 }

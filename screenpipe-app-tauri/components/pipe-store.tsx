@@ -25,7 +25,7 @@ import { InstalledPipe, PipeWithStatus } from "./pipe-store/types";
 import { PipeDetails } from "./pipe-store/pipe-details";
 import { PipeCard } from "./pipe-store/pipe-card";
 import { AddPipeForm } from "./pipe-store/add-pipe-form";
-import { useSettings } from "@/lib/hooks/use-settings";
+import { useSettings, awaitSettingsHydration } from "@/lib/hooks/use-settings";
 import posthog from "posthog-js";
 import { Progress } from "./ui/progress";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -65,7 +65,7 @@ const corePipes: string[] = [];
 export const PipeStore: React.FC = () => {
   const { health } = useHealthCheck();
   const [selectedPipe, setSelectedPipe] = useState<PipeWithStatus | null>(null);
-  const { settings, updateSettings, isHydrated } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const [pipes, setPipes] = useState<PipeWithStatus[]>([]);
   const [installedPipes, setInstalledPipes] = useState<InstalledPipe[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1190,10 +1190,19 @@ export const PipeStore: React.FC = () => {
   }, [checkForUpdates]);
 
   useEffect(() => {
-    if (isHydrated && settings.user?.token) {
-      fetchStorePlugins();
-    }
-  }, [installedPipes, purchaseHistory, isHydrated, settings.user?.token]);
+    let cancelled = false;
+    (async () => {
+      try {
+        await awaitSettingsHydration();
+        if (!cancelled && settings.user?.token) {
+          fetchStorePlugins();
+        }
+      } catch (error) {
+        console.error('Failed to wait for settings hydration in pipe store:', error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [installedPipes, purchaseHistory, settings.user?.token]);
 
   useEffect(() => {
     fetchPurchaseHistory();

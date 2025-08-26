@@ -13,7 +13,7 @@ import { LazyStore, LazyStore as TauriStore } from "@tauri-apps/plugin-store";
 import { localDataDir } from "@tauri-apps/api/path";
 import { rename, remove, exists } from "@tauri-apps/plugin-fs";
 import { flattenObject, unflattenObject } from "../utils";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import posthog from "posthog-js";
 import localforage from "localforage";
 import merge from "lodash/merge";
@@ -115,7 +115,7 @@ export type Settings = {
 	embeddedLLM: EmbeddedLLMConfig;
 	languages: Language[];
         enableBeta: boolean;
-        hasCompletedOnboarding: boolean;
+        isFirstTimeUser: boolean;
 	autoStartEnabled: boolean;
 	enableFrameCache: boolean; // Add this line
 	enableUiMonitoring: boolean; // Add this line
@@ -185,7 +185,7 @@ const DEFAULT_SETTINGS: Settings = {
 		port: 11434,
 	},
         enableBeta: false,
-        hasCompletedOnboarding: false,
+        isFirstTimeUser: true,
 	autoStartEnabled: true,
 	enableFrameCache: true, // Add this line
 	enableUiMonitoring: false, // Change from true to false
@@ -242,7 +242,6 @@ const DEFAULT_IGNORED_WINDOWS_PER_OS: Record<string, string[]> = {
 // Model definition
 export interface StoreModel {
         settings: Settings;
-        isHydrated: boolean;
         setSettings: Action<StoreModel, Partial<Settings>>;
         resetSettings: Action<StoreModel>;
         resetSetting: Action<StoreModel, keyof Settings>;
@@ -294,7 +293,6 @@ export const getStore = async () => {
 				activeProfile === "default"
 					? `store.bin`
 					: `store-${activeProfile}.bin`;
-			console.log("activeProfile", activeProfile, file);
 			return new TauriStore(`${dir}/screenpipe/${file}`, {
 				autoSave: false,
 			});
@@ -317,7 +315,7 @@ const tauriStorage: PersistStorage = {
 			values[k] = await tauriStore.get(k);
 		}
 
-                return { settings: unflattenObject(values), isHydrated: true };
+                return { settings: unflattenObject(values) };
         },
         setItem: async (_key: string, value: any) => {
                 delete value.settings.customSettings;
@@ -364,7 +362,7 @@ const tauriStorage: PersistStorage = {
                                 await remove(backupPath);
                         }
 
-                        resetStore();
+                        // Don't reset store after successful save - this was causing settings to be lost
                 } catch (err) {
                         console.error("failed to save settings:", err);
                         try {
@@ -397,9 +395,7 @@ export const store = createContextStore<StoreModel>(
         persist(
                 {
                         settings: createDefaultSettingsObject(),
-                        isHydrated: false,
                         setSettings: action((state, payload) => {
-                                console.log(state, payload);
                                 state.settings = merge({}, state.settings, payload);
                         }),
 			resetSettings: action((state) => {
@@ -417,9 +413,46 @@ export const store = createContextStore<StoreModel>(
 	),
 );
 
+let hydrationResolved = false;
+const pendingUpdates: (() => void)[] = [];
+
+export const hydrationReady: Promise<void> = typeof window !== "undefined" && (store as any).persist?.resolveRehydration
+        ? (store as any).persist.resolveRehydration()
+                .then(() => {
+                        hydrationResolved = true;
+                        pendingUpdates.forEach((fn) => fn());
+                        pendingUpdates.length = 0;
+                })
+                .catch((error: Error) => {
+                        console.error('Settings hydration failed:', error);
+                        // Fallback: mark as resolved with defaults to prevent hanging
+                        hydrationResolved = true;
+                        pendingUpdates.forEach((fn) => fn());
+                        pendingUpdates.length = 0;
+                })
+        : Promise.resolve().then(() => {
+                // During SSR, immediately resolve as "hydrated"
+                hydrationResolved = true;
+                pendingUpdates.forEach((fn) => fn());
+                pendingUpdates.length = 0;
+        });
+
+export function awaitSettingsHydration(timeout = 10000) {
+        return Promise.race([
+                hydrationReady,
+                new Promise<void>((_, reject) => 
+                        setTimeout(() => reject(new Error('Settings hydration timeout')), timeout)
+                )
+        ]).catch(() => {
+                // Timeout or error - proceed with defaults
+                hydrationResolved = true;
+                pendingUpdates.forEach((fn) => fn());
+                pendingUpdates.length = 0;
+        });
+}
+
 export function useSettings() {
         const settings = store.useStoreState((state) => state.settings);
-        const isHydrated = store.useStoreState((state) => state.isHydrated);
         const setSettings = store.useStoreActions((actions) => actions.setSettings);
         const resetSettingsAction = store.useStoreActions(
                 (actions) => actions.resetSettings,
@@ -428,30 +461,18 @@ export function useSettings() {
                 (actions) => actions.resetSetting,
         );
 
-        const hydrationQueue = useRef<(() => void)[]>([]);
-
-        const runOrQueue = useCallback(
-                (fn: () => void): Promise<void> => {
-                        if (isHydrated) {
-                                fn();
-                                return Promise.resolve();
-                        }
-                        return new Promise((resolve) => {
-                                hydrationQueue.current.push(() => {
-                                        fn();
-                                        resolve();
-                                });
-                        });
-                },
-                [isHydrated],
-        );
-
-        useEffect(() => {
-                if (isHydrated && hydrationQueue.current.length) {
-                        hydrationQueue.current.forEach((fn) => fn());
-                        hydrationQueue.current = [];
+        const runOrQueue = useCallback((fn: () => void): Promise<void> => {
+                if (hydrationResolved) {
+                        fn();
+                        return Promise.resolve();
                 }
-        }, [isHydrated]);
+                return new Promise((resolve) => {
+                        pendingUpdates.push(() => {
+                                fn();
+                                resolve();
+                        });
+                });
+        }, []);
 
         const updateSettings = useCallback(
                 (payload: Partial<Settings>) => runOrQueue(() => setSettings(payload)),
@@ -578,6 +599,5 @@ export function useSettings() {
                 loadUser,
                 resetSetting,
                 getDataDir,
-                isHydrated,
         };
 }

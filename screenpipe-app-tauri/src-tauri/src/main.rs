@@ -8,9 +8,7 @@ use commands::show_main_window;
 use serde_json::json;
 use serde_json::Value;
 use std::env;
-use std::fs;
 use std::fs::File;
-use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::Config;
@@ -594,27 +592,10 @@ fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
 }
 
 fn load_analytics_enabled(_config: &Config) -> bool {
-    // Use the proper platform-specific data directory
-    // On macOS: ~/Library/Application Support/screenpipe  
-    // On Windows: %APPDATA%\screenpipe
-    // On Linux: ~/.local/share/screenpipe
-    let base_dir = dirs::data_dir()
-        .map(|d| d.join("screenpipe"))
-        .unwrap_or_else(|| dirs::home_dir().unwrap().join(".screenpipe"));
-    let store_path = base_dir.join("store.bin");
-    
-    if let Ok(mut file) = File::open(store_path) {
-        let mut contents = String::new();
-        if file.read_to_string(&mut contents).is_ok() {
-            if let Ok(value) = serde_json::from_str::<Value>(&contents) {
-                return value
-                    .get("analyticsEnabled")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(true);
-            }
-        }
-    }
-    true
+    // Temporarily default to false to avoid permission issues during startup
+    // Analytics will be properly initialized later via the frontend after
+    // the Tauri app has proper filesystem permissions
+    false
 }
 
 #[tokio::main]
