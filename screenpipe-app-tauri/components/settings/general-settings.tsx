@@ -3,12 +3,13 @@
 import React from "react";
 import { useSettings } from "@/lib/hooks/use-settings";
 import { Switch } from "@/components/ui/switch";
+import { updateSettingsWithPersistence } from "@/lib/utils/settings-persistence";
 
 export default function GeneralSettings() {
   const { settings, updateSettings } = useSettings();
 
-  const handleSettingsChange = (newSettings: Partial<typeof settings>) => {
-    updateSettings(newSettings);
+  const handleSettingsChange = async (newSettings: Partial<typeof settings>) => {
+    await updateSettingsWithPersistence(updateSettings, newSettings);
   };
 
   return (
