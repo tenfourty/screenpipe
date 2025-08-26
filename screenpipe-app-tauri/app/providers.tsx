@@ -10,6 +10,10 @@ import {
   useSettings,
   awaitSettingsHydration,
 } from "@/lib/hooks/use-settings";
+import { 
+  useSettingsZustand, 
+  awaitZustandHydration 
+} from "@/lib/hooks/use-settings-zustand";
 import { profilesStore as ProfilesStore } from "@/lib/hooks/use-profiles";
 
 // Separate analytics initialization to prevent unnecessary re-renders
