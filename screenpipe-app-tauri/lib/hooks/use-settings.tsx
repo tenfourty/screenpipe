@@ -135,6 +135,7 @@ export type Settings = {
 	aiPresets: AIPreset[];
 	enableRealtimeVision: boolean;
 	autoUpdatePipes: boolean;
+	showInstalledPipesOnly: boolean;
 };
 
 export const DEFAULT_PROMPT = `Rules:
@@ -204,6 +205,7 @@ const DEFAULT_SETTINGS: Settings = {
 	useAllMonitors: false,
 	enableRealtimeVision: true,
 	autoUpdatePipes: false, // Default to false for auto-updating pipes
+	showInstalledPipesOnly: false, // Default to showing all pipes
 };
 
 const DEFAULT_IGNORED_WINDOWS_IN_ALL_OS = [

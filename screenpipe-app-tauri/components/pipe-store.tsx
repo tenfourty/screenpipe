@@ -69,7 +69,6 @@ export const PipeStore: React.FC = () => {
   const [pipes, setPipes] = useState<PipeWithStatus[]>([]);
   const [installedPipes, setInstalledPipes] = useState<InstalledPipe[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showInstalledOnly, setShowInstalledOnly] = useState(false);
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistoryItem[]>(
     [],
   );
@@ -93,7 +92,7 @@ export const PipeStore: React.FC = () => {
       .filter(
         (pipe) =>
           pipe.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          (!showInstalledOnly || pipe.is_installed) &&
+          (!settings.showInstalledPipesOnly || pipe.is_installed) &&
           !pipe.is_installing,
       )
       .sort((a, b) => {
@@ -109,7 +108,7 @@ export const PipeStore: React.FC = () => {
           new Date(a.created_at as string).getTime()
         );
       });
-  }, [pipes, searchQuery, showInstalledOnly]);
+  }, [pipes, searchQuery, settings.showInstalledPipesOnly]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
   const [isPipeFunctionEnabled, setIsPipeFunctionEnabled] = useState(true);
@@ -1472,19 +1471,19 @@ export const PipeStore: React.FC = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setShowInstalledOnly(!showInstalledOnly)}
+                    onClick={() => updateSettings({ showInstalledPipesOnly: !settings.showInstalledPipesOnly })}
                   >
                     <HardDriveDownload
                       className={cn(
                         "h-4 w-4",
-                        showInstalledOnly && "text-green-500",
+                        settings.showInstalledPipesOnly && "text-green-500",
                       )}
                     />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
-                    {showInstalledOnly
+                    {settings.showInstalledPipesOnly
                       ? "showing installed pipes only"
                       : "showing all pipes"}
                   </p>
