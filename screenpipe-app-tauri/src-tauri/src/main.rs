@@ -652,7 +652,9 @@ async fn main() {
                 let _ = window
                     .app_handle()
                     .set_activation_policy(tauri::ActivationPolicy::Regular);
-                window.hide().unwrap();
+                if let Err(e) = window.hide() {
+                    eprintln!("Failed to hide window: {}", e);
+                }
                 api.prevent_close();
             }
             _ => {}
