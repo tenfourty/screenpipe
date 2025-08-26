@@ -1,4 +1,4 @@
-import { useSettings, awaitSettingsHydration } from "./use-settings";
+import { useSettingsZustand, awaitZustandHydration } from "./use-settings-zustand";
 import React, { useContext } from "react";
 
 const OnboardingContext = React.createContext<{
@@ -10,7 +10,8 @@ export const OnboardingProvider = OnboardingContext.Provider;
 
 export const useOnboarding = () => {
   const context = useContext(OnboardingContext);
-  const { settings, updateSettings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
   
   if (context) {
     // Use context if available (main app provides it)
@@ -22,7 +23,7 @@ export const useOnboarding = () => {
 
   const setShowOnboarding = async (show: boolean) => {
     try {
-      await awaitSettingsHydration();
+      await awaitZustandHydration();
       await updateSettings({ isFirstTimeUser: show });
     } catch (error) {
       console.error('Failed to update onboarding settings:', error);

@@ -25,7 +25,7 @@ import { InstalledPipe, PipeWithStatus } from "./pipe-store/types";
 import { PipeDetails } from "./pipe-store/pipe-details";
 import { PipeCard } from "./pipe-store/pipe-card";
 import { AddPipeForm } from "./pipe-store/add-pipe-form";
-import { useSettings, awaitSettingsHydration } from "@/lib/hooks/use-settings";
+import { useSettingsZustand, awaitZustandHydration } from "@/lib/hooks/use-settings-zustand";
 import posthog from "posthog-js";
 import { Progress } from "./ui/progress";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -65,7 +65,8 @@ const corePipes: string[] = [];
 export const PipeStore: React.FC = () => {
   const { health } = useHealthCheck();
   const [selectedPipe, setSelectedPipe] = useState<PipeWithStatus | null>(null);
-  const { settings, updateSettings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
   const [pipes, setPipes] = useState<PipeWithStatus[]>([]);
   const [installedPipes, setInstalledPipes] = useState<InstalledPipe[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1192,7 +1193,7 @@ export const PipeStore: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        await awaitSettingsHydration();
+        await awaitZustandHydration();
         if (!cancelled && settings.user?.token) {
           fetchStorePlugins();
         }

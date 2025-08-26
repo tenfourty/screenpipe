@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useSettings } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
@@ -78,7 +78,9 @@ function PlanCard({
 }
 
 export function AccountSection() {
-  const { settings, updateSettings, loadUser } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
+  const loadUser = useSettingsZustand((state) => state.loadUser);
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isAnnual, setIsAnnual] = useState(true);

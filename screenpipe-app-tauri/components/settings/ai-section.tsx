@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
-import { AIProviderType, useSettings } from "@/lib/hooks/use-settings";
+import { AIProviderType } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -109,7 +110,9 @@ export const AIProviderCard = ({
 };
 
 const AISection = () => {
-  const { settings, updateSettings, resetSetting } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
+  const resetSetting = useSettingsZustand((state) => state.resetSetting);
 
   const [showApiKey, setShowApiKey] = React.useState(false);
 

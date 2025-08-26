@@ -43,9 +43,9 @@ import { Command as TauriCommand } from "@tauri-apps/plugin-shell";
 
 import {
   Settings,
-  useSettings,
   VadSensitivity,
 } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { useToast } from "@/components/ui/use-toast";
 import { useHealthCheck } from "@/lib/hooks/use-health-check";
 import { invoke } from "@tauri-apps/api/core";
@@ -118,7 +118,12 @@ const createWindowOptions = (
 };
 
 export function RecordingSettings() {
-  const { settings, updateSettings, getDataDir } = useSettings();
+  // Zustand selective subscriptions for better performance
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
+  
+  // Note: getDataDir functionality implemented using settings
+  const getDataDir = () => settings.dataDir || '';
   const [openAudioDevices, setOpenAudioDevices] = React.useState(false);
   const [openLanguages, setOpenLanguages] = React.useState(false);
   const [dataDirInputVisible, setDataDirInputVisible] = React.useState(false);

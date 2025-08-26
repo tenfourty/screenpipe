@@ -3,8 +3,9 @@ import { Button } from "../ui/button";
 import {
   AIPreset,
   DEFAULT_PROMPT,
-  useSettings,
+  Settings,
 } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { AIModel, AIProviderCard, OllamaModel } from "./ai-section";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
@@ -64,7 +65,8 @@ const AISection = ({
   setDialog: (value: boolean) => void;
   isDuplicating?: boolean;
 }) => {
-  const { settings, updateSettings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
   const [settingsPreset, setSettingsPreset] = useState<
     Partial<AIPreset> | undefined
   >(preset);
@@ -701,7 +703,8 @@ const providerImageSrc: Record<AIPreset["provider"], string> = {
 };
 
 export const AIPresets = () => {
-  const { settings, updateSettings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
   const [createPresetsDialog, setCreatePresentDialog] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<AIPreset | undefined>();
   const [isLoading, setIsLoading] = useState(false);

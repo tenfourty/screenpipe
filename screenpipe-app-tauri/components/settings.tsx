@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useSettings } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import {
   Brain,
   Video,
@@ -63,7 +63,7 @@ export function Settings() {
     useState<SettingsSection>("account");
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
-  const { settings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
   // Reset to account section when dialog opens
   useEffect(() => {
     if (isOpen) {

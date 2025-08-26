@@ -5,16 +5,14 @@ import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useState, useCallback } from "react";
 import { ChangelogDialogProvider } from "@/lib/hooks/use-changelog-dialog";
 import React from "react";
-import {
-  store as SettingsStore,
-  useSettings,
-  awaitSettingsHydration,
-} from "@/lib/hooks/use-settings";
+// Modern Zustand stores  
 import { 
   useSettingsZustand, 
   awaitZustandHydration 
 } from "@/lib/hooks/use-settings-zustand";
-import { profilesStore as ProfilesStore } from "@/lib/hooks/use-profiles";
+import {
+  useProfilesZustand,
+} from "@/lib/hooks/use-profiles-zustand";
 
 // Separate analytics initialization to prevent unnecessary re-renders
 const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
@@ -32,7 +30,7 @@ const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
     let cancelled = false;
     (async () => {
       try {
-        await awaitSettingsHydration();
+        await awaitZustandHydration();
         if (cancelled) return;
         
         if (analyticsEnabled) {
@@ -66,26 +64,22 @@ const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
 
 // Memoized inner provider to prevent unnecessary re-renders
 const ProviderInner = React.memo(({ children }: { children: React.ReactNode }) => {
-  const { settings } = useSettings();
+  // Use Zustand with selective subscription for analytics
+  const analyticsEnabled = useSettingsZustand((state) => state.settings.analyticsEnabled);
   
   // Initialize analytics with the hook
-  useAnalyticsInitialization(settings.analyticsEnabled);
+  useAnalyticsInitialization(analyticsEnabled);
 
   return (
-    <ProfilesStore.Provider>
-      <ChangelogDialogProvider>
-        <PostHogProvider client={posthog}>{children}</PostHogProvider>
-      </ChangelogDialogProvider>
-    </ProfilesStore.Provider>
+    <ChangelogDialogProvider>
+      <PostHogProvider client={posthog}>{children}</PostHogProvider>
+    </ChangelogDialogProvider>
   );
 });
 
 ProviderInner.displayName = 'ProviderInner';
 
 export const Providers = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <SettingsStore.Provider>
-      <ProviderInner>{children}</ProviderInner>
-    </SettingsStore.Provider>
-  );
+  // Zustand doesn't need provider wrappers - stores are global
+  return <ProviderInner>{children}</ProviderInner>;
 };

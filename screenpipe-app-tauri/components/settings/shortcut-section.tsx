@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useSettings } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { useProfiles } from "@/lib/hooks/use-profiles";
 import { PipeApi } from "@/lib/api";
 import ShortcutRow from "./shortcut-row";
@@ -8,7 +8,7 @@ const ShortcutSection = () => {
   const [pipes, setPipes] = useState<
     { id: string; source: string; enabled: boolean }[]
   >([]);
-  const { settings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
   const { profiles, profileShortcuts } = useProfiles();
 
   useEffect(() => {

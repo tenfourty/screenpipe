@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Settings, Shortcut, useSettings } from "@/lib/hooks/use-settings";
+import { Settings, Shortcut } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { useProfiles } from "@/lib/hooks/use-profiles";
 import { parseKeyboardShortcut } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
@@ -31,7 +32,8 @@ const ShortcutRow = ({
   value,
 }: ShortcutRowProps) => {
   const [isRecording, setIsRecording] = useState(false);
-  const { settings, updateSettings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  const updateSettings = useSettingsZustand((state) => state.updateSettings);
   const { profileShortcuts, updateProfileShortcut } = useProfiles();
 
   useEffect(() => {

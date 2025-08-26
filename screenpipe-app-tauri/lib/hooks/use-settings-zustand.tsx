@@ -18,7 +18,7 @@ interface SettingsStore {
   updateSettings: (update: Partial<Settings>) => Promise<void>;
   resetSettings: () => Promise<void>;
   resetSetting: (key: keyof Settings) => Promise<void>;
-  loadUser: (token: string) => Promise<void>;
+  loadUser: (token: string, forceReload?: boolean) => Promise<void>;
   reloadStore: () => Promise<void>;
   
   // Internal
@@ -158,9 +158,9 @@ export const useSettingsZustand = create<SettingsStore>()(
           }
         },
         
-        loadUser: async (token: string) => {
+        loadUser: async (token: string, forceReload = false) => {
           try {
-            const userData = await loadUserData(token);
+            const userData = await loadUserData(token); // TODO: Implement forceReload logic
             const currentSettings = get().settings;
             const newSettings = {
               ...currentSettings,
