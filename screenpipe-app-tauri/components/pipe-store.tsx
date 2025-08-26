@@ -127,7 +127,7 @@ export const PipeStore: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, filteredPipes.length]);
 
-  const fetchStorePlugins = async () => {
+  const fetchStorePlugins = useCallback(async () => {
     const token = settings.user?.token;
     if (!token) return;
     try {
@@ -190,14 +190,14 @@ export const PipeStore: React.FC = () => {
     } catch (error) {
       console.warn("Failed to fetch store plugins:", error);
     }
-  };
+  }, [settings.user?.token, installedPipes, purchaseHistory]);
 
-  const fetchPurchaseHistory = async () => {
+  const fetchPurchaseHistory = useCallback(async () => {
     if (!settings.user?.token) return;
     const pipeApi = await PipeApi.create(settings.user!.token!);
     const purchaseHistory = await pipeApi.getUserPurchaseHistory();
     setPurchaseHistory(purchaseHistory);
-  };
+  }, [settings.user]);
 
   const handlePurchasePipe = async (
     pipe: PipeWithStatus,
@@ -424,7 +424,7 @@ export const PipeStore: React.FC = () => {
     }
   };
 
-  const fetchInstalledPipes = async () => {
+  const fetchInstalledPipes = useCallback(async () => {
     if (!health || health?.status === "error") return;
     try {
       const response = await fetch("http://localhost:3030/pipes/list");
@@ -457,7 +457,7 @@ export const PipeStore: React.FC = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [health]);
 
   const handleResetAllPipes = async () => {
     setIsPurging(true);
@@ -1201,22 +1201,22 @@ export const PipeStore: React.FC = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [installedPipes, purchaseHistory, settings.user?.token]);
+  }, [fetchStorePlugins, settings.user?.token]);
 
   useEffect(() => {
     fetchPurchaseHistory();
-  }, [settings.user.token]);
+  }, [fetchPurchaseHistory]);
 
   useEffect(() => {
     fetchInstalledPipes();
-  }, [health]);
+  }, [fetchInstalledPipes]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetchInstalledPipes();
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchInstalledPipes]);
 
   // Add periodic update check
   useEffect(() => {

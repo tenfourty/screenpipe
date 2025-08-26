@@ -2,7 +2,7 @@
 "use client";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ChangelogDialogProvider } from "@/lib/hooks/use-changelog-dialog";
 import React from "react";
 import {
@@ -12,9 +12,9 @@ import {
 } from "@/lib/hooks/use-settings";
 import { profilesStore as ProfilesStore } from "@/lib/hooks/use-profiles";
 
-// Inner component that has access to the settings store
-const ProviderInner = ({ children }: { children: React.ReactNode }) => {
-  const { settings } = useSettings();
+// Separate analytics initialization to prevent unnecessary re-renders
+const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -22,13 +22,16 @@ const ProviderInner = ({ children }: { children: React.ReactNode }) => {
     const isDebug = process.env.TAURI_ENV_DEBUG === "true";
     if (isDebug) return;
 
+    // Only initialize once
+    if (initialized) return;
+
     let cancelled = false;
     (async () => {
       try {
         await awaitSettingsHydration();
         if (cancelled) return;
         
-        if (settings.analyticsEnabled) {
+        if (analyticsEnabled) {
           posthog.init("phc_Bt8GoTBPgkCpDrbaIZzJIEYt0CrJjhBiuLaBck1clce", {
             api_host: "https://eu.i.posthog.com",
             person_profiles: "identified_only",
@@ -37,12 +40,32 @@ const ProviderInner = ({ children }: { children: React.ReactNode }) => {
         } else {
           posthog.opt_out_capturing();
         }
+        setInitialized(true);
       } catch (error) {
         console.error('Failed to wait for settings hydration in analytics setup:', error);
       }
     })();
     return () => { cancelled = true; };
-  }, [settings.analyticsEnabled]);
+  }, [analyticsEnabled, initialized]);
+
+  // Handle analytics preference changes after initialization
+  useEffect(() => {
+    if (!initialized) return;
+    
+    if (analyticsEnabled) {
+      posthog.opt_in_capturing();
+    } else {
+      posthog.opt_out_capturing();
+    }
+  }, [analyticsEnabled, initialized]);
+};
+
+// Memoized inner provider to prevent unnecessary re-renders
+const ProviderInner = React.memo(({ children }: { children: React.ReactNode }) => {
+  const { settings } = useSettings();
+  
+  // Initialize analytics with the hook
+  useAnalyticsInitialization(settings.analyticsEnabled);
 
   return (
     <ProfilesStore.Provider>
@@ -51,7 +74,9 @@ const ProviderInner = ({ children }: { children: React.ReactNode }) => {
       </ChangelogDialogProvider>
     </ProfilesStore.Provider>
   );
-};
+});
+
+ProviderInner.displayName = 'ProviderInner';
 
 export const Providers = ({ children }: { children: React.ReactNode }) => {
   return (

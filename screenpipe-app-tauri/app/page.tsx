@@ -38,24 +38,34 @@ export default function Home() {
   const { open: openStatusDialog } = useStatusDialog();
   const { setIsOpen: setSettingsOpen } = useSettingsDialog();
   const isProcessingRef = React.useRef(false);
+  const loadUserRef = React.useRef(loadUser);
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [shouldShowOnboarding, setShouldShowOnboarding] = React.useState<boolean | null>(null);
+
+  // Keep loadUser ref current
+  React.useEffect(() => {
+    loadUserRef.current = loadUser;
+  }, [loadUser]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         await awaitSettingsHydration();
-        if (!cancelled) {
-          setIsHydrated(true);
-          // Get fresh settings from store after hydration
-          const store = await getStore();
-          const freshSettings = await store.get("settings") as any;
-          const isFirstTime = freshSettings?.isFirstTimeUser ?? false;
-          setShouldShowOnboarding(isFirstTime);
-          if (settings.user?.token) {
-            loadUser(settings.user.token);
-          }
+        if (cancelled) return;
+        
+        setIsHydrated(true);
+        
+        // Get fresh settings from store after hydration
+        const store = await getStore();
+        const freshSettings = await store.get("settings") as any;
+        const isFirstTime = freshSettings?.isFirstTimeUser ?? false;
+        setShouldShowOnboarding(isFirstTime);
+        
+        // Load user with current token
+        const userToken = freshSettings?.user?.token;
+        if (userToken) {
+          loadUserRef.current(userToken);
         }
       } catch (error) {
         console.error('Failed to wait for settings hydration in user loading:', error);
@@ -66,7 +76,7 @@ export default function Home() {
       }
     })();
     return () => { cancelled = true; };
-  }, [loadUser]);
+  }, []); // Remove loadUser dependency to prevent re-runs
 
   // Create setShowOnboarding function
   const setShowOnboarding = React.useCallback(async (show: boolean) => {
