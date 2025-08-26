@@ -18,14 +18,16 @@ import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { LogFileButton } from "./log-file-button";
 import { DevModeSettings } from "./dev-mode-settings";
 import { cn } from "@/lib/utils";
-import { useSettings } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { useStatusDialog } from "@/lib/hooks/use-status-dialog";
 import { PermissionButtons } from "./status/permission-buttons";
 
 const HealthStatus = ({ className }: { className?: string }) => {
   const { health } = useHealthCheck();
   const { isOpen, open, close } = useStatusDialog();
-  const { settings, getDataDir } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
+  // TODO: Implement getDataDir in Zustand store
+  const getDataDir = async () => settings.dataDir || "default";
   const [localDataDir, setLocalDataDir] = useState("");
 
   const handleOpenDataDir = async () => {
