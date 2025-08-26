@@ -147,12 +147,11 @@ export function RecordingSettings() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Modify setLocalSettings to track changes
-  const handleSettingsChange = async (
+  const handleSettingsChange = (
     newSettings: Partial<Settings>,
     restart: boolean = true
   ) => {
-    const { updateSettingsWithPersistence } = await import('@/lib/utils/settings-persistence');
-    await updateSettingsWithPersistence(updateSettings, newSettings);
+    updateSettings(newSettings);
     
     if (restart) {
       setHasUnsavedChanges(true);

@@ -397,13 +397,48 @@ export const store = createContextStore<StoreModel>(
                         settings: createDefaultSettingsObject(),
                         setSettings: action((state, payload) => {
                                 state.settings = merge({}, state.settings, payload);
+                                // Force immediate persistence after state update
+                                setTimeout(async () => {
+                                        try {
+                                                const store = await getStore();
+                                                for (const [key, value] of Object.entries(payload)) {
+                                                        await store.set(key, value);
+                                                }
+                                                await store.save();
+                                        } catch (error) {
+                                                console.error('Failed to persist settings:', error);
+                                        }
+                                }, 0);
                         }),
 			resetSettings: action((state) => {
 				state.settings = createDefaultSettingsObject();
+				// Force immediate persistence
+				setTimeout(async () => {
+					try {
+						const store = await getStore();
+						const defaultSettings = createDefaultSettingsObject();
+						for (const [key, value] of Object.entries(defaultSettings)) {
+							await store.set(key, value);
+						}
+						await store.save();
+					} catch (error) {
+						console.error('Failed to persist reset settings:', error);
+					}
+				}, 0);
 			}),
 			resetSetting: action((state, key) => {
 				const defaultValue = createDefaultSettingsObject()[key];
 				(state.settings as any)[key] = defaultValue;
+				// Force immediate persistence
+				setTimeout(async () => {
+					try {
+						const store = await getStore();
+						await store.set(key, defaultValue);
+						await store.save();
+					} catch (error) {
+						console.error('Failed to persist reset setting:', error);
+					}
+				}, 0);
 			}),
 		},
 		{
