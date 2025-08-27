@@ -102,16 +102,46 @@ export const useProfilesZustand = create<ProfilesStore>()(
           set({ profiles: newProfiles });
           
           try {
-            // Create a new settings store for the profile
+            // Create a new settings store for the profile with selective copying
             const dir = await localDataDir();
             const profileStore = new LazyStore(`${dir}/screenpipe/store-${profileName}.bin`, {
               autoSave: false,
             });
             
-            // Copy current settings to the new profile
-            for (const [key, value] of Object.entries(currentSettings)) {
+            // Start with default settings
+            const defaultSettings = createDefaultSettingsObject();
+            
+            // Define keys to copy from current settings (matching original behavior)
+            const keysToCopy = [
+              // Account related
+              'user',
+              'userId', 
+              // AI related
+              'aiProviderType',
+              'aiUrl',
+              'aiModel', 
+              'aiMaxContextChars',
+              'openaiApiKey',
+              'customPrompt',
+              // Shortcuts
+              'showScreenpipeShortcut',
+              'startRecordingShortcut', 
+              'stopRecordingShortcut',
+              'disabledShortcuts',
+            ];
+            
+            // Set defaults first
+            for (const [key, value] of Object.entries(defaultSettings)) {
               await profileStore.set(key, value);
             }
+            
+            // Then selectively copy current settings for specific keys
+            for (const key of keysToCopy) {
+              if (key in currentSettings) {
+                await profileStore.set(key, currentSettings[key as keyof Settings]);
+              }
+            }
+            
             await profileStore.save();
             
             // Persist profiles list
