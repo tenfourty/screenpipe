@@ -327,7 +327,7 @@ export const PipeStore: React.FC = () => {
     }
   };
 
-  const handleInstallPipe = async (
+  const handleInstallPipe = useCallback(async (
     pipe: PipeWithStatus,
     onComplete?: () => void,
   ) => {
@@ -423,7 +423,7 @@ export const PipeStore: React.FC = () => {
         return next;
       });
     }
-  };
+  }, [checkLogin, settings.user, setPipes, setLoadingInstalls]);
 
   const fetchInstalledPipes = useCallback(async () => {
     if (!health || health?.status === "error") return;
@@ -841,7 +841,7 @@ export const PipeStore: React.FC = () => {
     }
   };
 
-  const handleUpdatePipe = async (pipe: PipeWithStatus) => {
+  const handleUpdatePipe = useCallback(async (pipe: PipeWithStatus) => {
     try {
       if (!checkLogin(settings.user)) return;
 
@@ -1005,7 +1005,7 @@ export const PipeStore: React.FC = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [checkLogin, settings.user, setPipes]);
 
   const handleRestartScreenpipe = async () => {
     setIsRestarting(true);
@@ -1177,7 +1177,7 @@ export const PipeStore: React.FC = () => {
       pipes,
       setPipes,
       settings.autoUpdatePipes,
-      handleUpdateAllPipes,
+      handleUpdatePipe,
     ],
   );
 
@@ -1295,7 +1295,7 @@ export const PipeStore: React.FC = () => {
     return () => {
       if (deepLinkUnsubscribe) deepLinkUnsubscribe();
     };
-  }, [pipes]);
+  }, [pipes, fetchPurchaseHistory, handleInstallPipe]);
 
   // Update the event listener effect to use the memoized functions
   useEffect(() => {
@@ -1338,7 +1338,7 @@ export const PipeStore: React.FC = () => {
     return () => {
       unsubscribePromise.then((unsubscribe) => unsubscribe());
     };
-  }, [pipes, settings.user, settings.autoUpdatePipes, fetchInstalledPipes]);
+  }, [pipes, settings.user, settings.autoUpdatePipes, fetchInstalledPipes, checkLogin, handleUpdatePipe]);
 
   if (health?.status === "error" || !isPipeFunctionEnabled) {
     return (

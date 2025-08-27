@@ -138,7 +138,7 @@ export function AccountSection() {
     return () => {
       if (deepLinkUnsubscribe) deepLinkUnsubscribe();
     };
-  }, [settings.user?.token, updateSettings]);
+  }, [settings.user?.token, updateSettings, loadUser, settings.user]);
 
   const clientRefId = `${settings.user?.id}&customer_email=${encodeURIComponent(
     settings.user?.email ?? ""
@@ -270,7 +270,7 @@ export function AccountSection() {
         contact: settings.user.contact || "",
       });
     }
-  }, [settings.user]); // Only run when settings.user changes
+  }, [settings.user, profileForm.bio, profileForm.contact, profileForm.github_username, profileForm.website]); // Only run when settings.user changes
 
   return (
     <div className="w-full space-y-6 py-4">

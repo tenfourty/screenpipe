@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import {
   AIPreset,
@@ -277,7 +277,7 @@ const AISection = ({
   const [models, setModels] = useState<AIModel[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
 
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     setIsLoadingModels(true);
     console.log(settingsPreset);
     try {
@@ -380,7 +380,7 @@ const AISection = ({
     } finally {
       setIsLoadingModels(false);
     }
-  };
+  }, [settingsPreset, settings.user?.id]);
 
   const apiKey = useMemo(() => {
     if (settingsPreset && "apiKey" in settingsPreset) {
@@ -394,11 +394,11 @@ const AISection = ({
     if (
       (settingsPreset?.provider === "openai" ||
         settingsPreset?.provider === "custom") &&
-      !settingsPreset?.apiKey
+      !apiKey
     )
       return;
     fetchModels();
-  }, [settingsPreset?.provider, settingsPreset?.url, apiKey]);
+  }, [settingsPreset?.provider, settingsPreset?.url, apiKey, fetchModels]);
 
   return (
     <div className="w-full space-y-6 py-4">

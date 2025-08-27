@@ -20,7 +20,7 @@ import {
   ChevronsUpDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
@@ -172,7 +172,7 @@ const AISection = () => {
   const [models, setModels] = useState<AIModel[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
 
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     setIsLoadingModels(true);
     console.log(settings.aiProviderType, settings.openaiApiKey, settings.aiUrl);
     try {
@@ -253,11 +253,11 @@ const AISection = () => {
     } finally {
       setIsLoadingModels(false);
     }
-  };
+  }, [settings.aiProviderType, settings.openaiApiKey, settings.aiUrl, settings.user?.id]);
 
   useEffect(() => {
     fetchModels();
-  }, [settings.aiProviderType, settings.openaiApiKey, settings.aiUrl]);
+  }, [settings.aiProviderType, settings.openaiApiKey, settings.aiUrl, fetchModels]);
 
   return (
     <div className="w-full space-y-6 py-4">

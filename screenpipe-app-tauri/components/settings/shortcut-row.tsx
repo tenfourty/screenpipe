@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Settings, Shortcut } from "@/lib/types/settings";
 import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { useProfilesZustand } from "@/lib/hooks/use-profiles-zustand";
@@ -121,7 +121,7 @@ const ShortcutRow = ({
     return true;
   };
 
-  const handleEnableShortcut = async (keys: string) => {
+  const handleEnableShortcut = useCallback(async (keys: string) => {
     try {
       toast({
         title: "shortcut enabled",
@@ -186,7 +186,7 @@ const ShortcutRow = ({
         variant: "destructive",
       });
     }
-  };
+  }, [shortcut, toast, updateSettings, settings, profileShortcuts, updateProfileShortcut, syncShortcuts, type]);
 
   const handleDisableShortcut = async () => {
     toast({

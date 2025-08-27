@@ -246,7 +246,7 @@ export default function Home() {
       });
       if (deepLinkUnsubscribe) deepLinkUnsubscribe();
     };
-  }, [setSettingsOpen]);
+  }, [setSettingsOpen, updateSettings, toast, setShowChangelogDialog, setShowOnboarding, openStatusDialog, setActiveProfile, reloadStore]);
 
   useEffect(() => {
     const checkScreenPermissionRestart = async () => {
@@ -283,7 +283,7 @@ export default function Home() {
     return () => {
       unlisten.then((unlistenFn) => unlistenFn());
     };
-  }, []);
+  }, [reloadStore]);
 
   // Show loading until settings are hydrated AND we know the onboarding state
   if (!isHydrated || shouldShowOnboarding === null) {

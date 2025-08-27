@@ -91,7 +91,7 @@ export const PipeCard: React.FC<PipeCardProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const settings = useSettingsZustand((state) => state.settings);
 
-  const handleOpenWindow = async (e: React.MouseEvent) => {
+  const handleOpenWindow = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       if (pipe.installed_config?.port) {
@@ -108,7 +108,7 @@ export const PipeCard: React.FC<PipeCardProps> = ({
         variant: "destructive",
       });
     }
-  };
+  }, [pipe.installed_config?.port, pipe.name, toast]);
 
   useEffect(() => {
     const pollBuildStatus = async () => {
@@ -184,7 +184,7 @@ export const PipeCard: React.FC<PipeCardProps> = ({
         clearInterval(buildStatusInterval);
       }
     };
-  }, [pipe.installed_config?.buildStatus]);
+  }, [pipe.installed_config?.buildStatus, pipe, setPipe]);
 
   const renderInstallationStatus = useCallback(() => {
     const buildStatus = pipe.installed_config?.buildStatus;
@@ -282,7 +282,7 @@ export const PipeCard: React.FC<PipeCardProps> = ({
         open
       </Button>
     );
-  }, [pipe.installed_config?.buildStatus]);
+  }, [handleOpenWindow, isLoading, onToggle, pipe]);
 
   return (
     <motion.div
