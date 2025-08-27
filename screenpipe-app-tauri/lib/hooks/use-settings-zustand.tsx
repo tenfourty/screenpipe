@@ -5,6 +5,8 @@ import { localDataDir, appDataDir } from '@tauri-apps/api/path';
 import { platform } from '@tauri-apps/plugin-os';
 import { rename, remove, exists } from '@tauri-apps/plugin-fs';
 import merge from 'lodash/merge';
+import localforage from 'localforage';
+import posthog from 'posthog-js';
 import type { Settings, User, AIPreset } from '@/lib/types/settings';
 import { createDefaultSettingsObject } from '@/lib/types/settings';
 
@@ -94,15 +96,50 @@ const loadPersistedSettings = async (): Promise<Partial<Settings>> => {
   }
 };
 
-// User loading functionality
-const loadUserData = async (token: string): Promise<Partial<User>> => {
+// User loading functionality - loads user data from API with caching
+const loadUserData = async (token: string, forceReload = false): Promise<User> => {
   try {
-    // This would typically be an API call
-    // For now, return empty object
-    return {};
+    // Try to get from cache first (unless force reload)
+    const cacheKey = `user_data_${token}`;
+    if (!forceReload) {
+      const cached = await localforage.getItem<{
+        data: User;
+        timestamp: number;
+      }>(cacheKey);
+
+      // Use cache if less than 30s old
+      if (cached && Date.now() - cached.timestamp < 30000) {
+        return cached.data;
+      }
+    }
+
+    const response = await fetch(`https://screenpi.pe/api/user`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to verify token");
+    }
+
+    const data = await response.json();
+    const userData = {
+      ...data.user,
+    } as User;
+
+    // Cache the result
+    await localforage.setItem(cacheKey, {
+      data: userData,
+      timestamp: Date.now(),
+    });
+
+    return userData;
   } catch (error) {
     console.error('Failed to load user data:', error);
-    return {};
+    throw error;
   }
 };
 
@@ -166,15 +203,23 @@ export const useSettingsZustand = create<SettingsStore>()(
         
         loadUser: async (token: string, forceReload = false) => {
           try {
-            const userData = await loadUserData(token); // TODO: Implement forceReload logic
             const currentSettings = get().settings;
+            const userData = await loadUserData(token, forceReload);
+            
+            // If user was not logged in before, send posthog event app_login with email
+            if (!currentSettings.user?.id && userData.email) {
+              posthog.capture("app_login", {
+                email: userData.email,
+              });
+            }
+            
             const newSettings = {
               ...currentSettings,
-              user: merge({}, currentSettings.user, userData),
+              user: userData,
             };
             
             set({ settings: newSettings });
-            await get()._persist({ user: newSettings.user });
+            await get()._persist({ user: userData });
           } catch (error) {
             console.error('Failed to load user:', error);
             throw error;
