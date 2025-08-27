@@ -28,13 +28,15 @@ const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
     if (initialized) return;
 
     let cancelled = false;
+    let timeoutId: NodeJS.Timeout;
+    
     (async () => {
       try {
         // Add timeout to prevent infinite waiting
         const hydrationPromise = awaitZustandHydration();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Hydration timeout')), 5000)
-        );
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Hydration timeout')), 5000);
+        });
         
         await Promise.race([hydrationPromise, timeoutPromise]);
         
@@ -56,7 +58,11 @@ const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
         setInitialized(true);
       }
     })();
-    return () => { cancelled = true; };
+    
+    return () => { 
+      cancelled = true; 
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [analyticsEnabled, initialized]);
 
   // Handle analytics preference changes after initialization
