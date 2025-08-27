@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Settings, Shortcut } from "@/lib/hooks/use-settings";
+import { Settings, Shortcut } from "@/lib/types/settings";
 import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { useProfilesZustand } from "@/lib/hooks/use-profiles-zustand";
 import { parseKeyboardShortcut } from "@/lib/utils";

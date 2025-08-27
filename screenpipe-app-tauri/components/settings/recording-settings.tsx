@@ -44,7 +44,7 @@ import { Command as TauriCommand } from "@tauri-apps/plugin-shell";
 import {
   Settings,
   VadSensitivity,
-} from "@/lib/hooks/use-settings";
+} from "@/lib/types/settings";
 import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { useToast } from "@/components/ui/use-toast";
 import { useHealthCheck } from "@/lib/hooks/use-health-check";

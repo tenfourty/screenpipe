@@ -3,7 +3,7 @@ import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import { localDataDir } from '@tauri-apps/api/path';
 import { remove } from '@tauri-apps/plugin-fs';
-import { createDefaultSettingsObject, type Settings } from './use-settings';
+import { createDefaultSettingsObject, type Settings } from '@/lib/types/settings';
 
 // Zustand profiles store interface
 interface ProfilesStore {

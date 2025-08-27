@@ -5,8 +5,8 @@ import { localDataDir } from '@tauri-apps/api/path';
 import { platform } from '@tauri-apps/plugin-os';
 import { rename, remove, exists } from '@tauri-apps/plugin-fs';
 import merge from 'lodash/merge';
-import type { Settings, User, AIPreset } from './use-settings';
-import { createDefaultSettingsObject } from './use-settings';
+import type { Settings, User, AIPreset } from '@/lib/types/settings';
+import { createDefaultSettingsObject } from '@/lib/types/settings';
 
 // Zustand store interface
 interface SettingsStore {

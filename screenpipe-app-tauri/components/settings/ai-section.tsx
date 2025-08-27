@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { AIProviderType } from "@/lib/hooks/use-settings";
+import { AIProviderType } from "@/lib/types/settings";
 import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";

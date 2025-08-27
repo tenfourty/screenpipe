@@ -4,7 +4,7 @@ import {
   AIPreset,
   DEFAULT_PROMPT,
   Settings,
-} from "@/lib/hooks/use-settings";
+} from "@/lib/types/settings";
 import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import { AIModel, AIProviderCard, OllamaModel } from "./ai-section";
 import { Label } from "../ui/label";
