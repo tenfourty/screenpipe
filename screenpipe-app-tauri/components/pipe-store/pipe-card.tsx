@@ -108,7 +108,7 @@ export const PipeCard: React.FC<PipeCardProps> = ({
         variant: "destructive",
       });
     }
-  }, [pipe.installed_config?.port, pipe.name, toast]);
+  }, [pipe.installed_config?.port, pipe.name]);
 
   useEffect(() => {
     const pollBuildStatus = async () => {

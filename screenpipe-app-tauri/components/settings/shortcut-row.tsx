@@ -88,7 +88,7 @@ const ShortcutRow = ({
     };
   }, [isRecording]);
 
-  const syncShortcuts = async (updatedShortcuts: {
+  const syncShortcuts = useCallback(async (updatedShortcuts: {
     showScreenpipeShortcut: string;
     startRecordingShortcut: string;
     stopRecordingShortcut: string;
@@ -119,7 +119,7 @@ const ShortcutRow = ({
     });
 
     return true;
-  };
+  }, []);
 
   const handleEnableShortcut = useCallback(async (keys: string) => {
     try {
@@ -186,7 +186,7 @@ const ShortcutRow = ({
         variant: "destructive",
       });
     }
-  }, [shortcut, toast, updateSettings, settings, profileShortcuts, updateProfileShortcut, syncShortcuts, type]);
+  }, [shortcut, updateSettings, settings, profileShortcuts, updateProfileShortcut, syncShortcuts, type]);
 
   const handleDisableShortcut = async () => {
     toast({
