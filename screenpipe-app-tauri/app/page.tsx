@@ -49,6 +49,19 @@ export default function Home() {
   const isProcessingRef = React.useRef(false);
   const [shouldShowOnboarding, setShouldShowOnboarding] = React.useState<boolean | null>(null);
 
+  // Trigger client-side hydration
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !isHydrated) {
+      // Trigger hydration for both stores on client-side
+      Promise.all([
+        useSettingsZustand.getState()._hydrate(),
+        useProfilesZustand.getState()._hydrate(),
+      ]).catch(error => {
+        console.error('Failed to hydrate stores:', error);
+      });
+    }
+  }, [isHydrated]);
+
   // Handle hydration and initial loading with Zustand
   useEffect(() => {
     if (!isHydrated) return; // Wait for Zustand hydration

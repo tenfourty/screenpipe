@@ -28,6 +28,11 @@ interface ProfilesStore {
 let profilesStorePromise: Promise<LazyStore> | null = null;
 
 const getProfilesStore = async () => {
+  // Prevent Tauri API calls during SSR
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot access Tauri profiles store during server-side rendering');
+  }
+
   if (!profilesStorePromise) {
     profilesStorePromise = (async () => {
       const dir = await localDataDir();
@@ -170,6 +175,13 @@ export const useProfilesZustand = create<ProfilesStore>()(
         
         // Internal methods
         _hydrate: async () => {
+          // Skip hydration during SSR
+          if (typeof window === 'undefined') {
+            console.warn('Attempted to hydrate profiles during SSR - skipping');
+            set({ isHydrated: true });
+            return;
+          }
+
           try {
             const persistedData = await loadPersistedProfiles();
             set({ 
@@ -203,8 +215,7 @@ export const useProfilesZustand = create<ProfilesStore>()(
   )
 );
 
-// Auto-hydrate on store creation
-useProfilesZustand.getState()._hydrate();
+// Note: Auto-hydration removed - now handled at component level for SSR compatibility
 
 // Export utility function for awaiting hydration
 export const awaitProfilesHydration = async (): Promise<void> => {

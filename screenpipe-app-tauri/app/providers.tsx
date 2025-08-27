@@ -30,7 +30,14 @@ const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
     let cancelled = false;
     (async () => {
       try {
-        await awaitZustandHydration();
+        // Add timeout to prevent infinite waiting
+        const hydrationPromise = awaitZustandHydration();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Hydration timeout')), 5000)
+        );
+        
+        await Promise.race([hydrationPromise, timeoutPromise]);
+        
         if (cancelled) return;
         
         if (analyticsEnabled) {
@@ -45,6 +52,8 @@ const useAnalyticsInitialization = (analyticsEnabled: boolean) => {
         setInitialized(true);
       } catch (error) {
         console.error('Failed to wait for settings hydration in analytics setup:', error);
+        // Still set initialized to prevent hanging
+        setInitialized(true);
       }
     })();
     return () => { cancelled = true; };

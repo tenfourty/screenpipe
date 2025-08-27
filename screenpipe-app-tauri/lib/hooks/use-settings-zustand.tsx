@@ -30,6 +30,11 @@ interface SettingsStore {
 let storePromise: Promise<LazyStore> | null = null;
 
 export const getZustandStore = async () => {
+  // Prevent Tauri API calls during SSR
+  if (typeof window === 'undefined') {
+    throw new Error('Cannot access Tauri store during server-side rendering');
+  }
+
   if (!storePromise) {
     storePromise = (async () => {
       const dir = await localDataDir();
@@ -182,6 +187,13 @@ export const useSettingsZustand = create<SettingsStore>()(
         
         // Internal methods
         _hydrate: async () => {
+          // Skip hydration during SSR
+          if (typeof window === 'undefined') {
+            console.warn('Attempted to hydrate settings during SSR - skipping');
+            set({ isHydrated: true });
+            return;
+          }
+
           try {
             const persistedSettings = await loadPersistedSettings();
             const defaultSettings = createDefaultSettingsObject();
@@ -209,8 +221,7 @@ export const useSettingsZustand = create<SettingsStore>()(
   )
 );
 
-// Auto-hydrate on store creation
-useSettingsZustand.getState()._hydrate();
+// Note: Auto-hydration removed - now handled at component level for SSR compatibility
 
 // Export utility function for awaiting hydration
 export const awaitZustandHydration = async (): Promise<void> => {
