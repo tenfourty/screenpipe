@@ -168,9 +168,13 @@ export function Settings() {
                       {profile !== "default" && (
                         <Trash2
                           className="h-4 w-4 opacity-50 hover:opacity-100"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            deleteProfile(profile);
+                            try {
+                              await deleteProfile(profile);
+                            } catch (error) {
+                              console.error('Failed to delete profile:', error);
+                            }
                           }}
                         />
                       )}

@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import { localDataDir } from '@tauri-apps/api/path';
-import { remove } from '@tauri-apps/plugin-fs';
 import { createDefaultSettingsObject, type Settings } from '@/lib/types/settings';
 
 // Zustand profiles store interface
@@ -53,7 +52,6 @@ const persistProfiles = async (state: Pick<ProfilesStore, 'activeProfile' | 'pro
     await store.set('shortcuts', state.shortcuts);
     await store.save();
   } catch (error) {
-    console.error('Failed to persist profiles:', error);
     throw error;
   }
 };
@@ -72,7 +70,6 @@ const loadPersistedProfiles = async (): Promise<{
     
     return { activeProfile, profiles, shortcuts };
   } catch (error) {
-    console.error('Failed to load persisted profiles:', error);
     return {
       activeProfile: 'default' as string,
       profiles: ['default'] as string[],
@@ -122,7 +119,6 @@ export const useProfilesZustand = create<ProfilesStore>()(
           } catch (error) {
             // Rollback on error
             set({ profiles: state.profiles });
-            console.error('Failed to create profile:', error);
             throw error;
           }
         },
@@ -144,11 +140,9 @@ export const useProfilesZustand = create<ProfilesStore>()(
           });
           
           try {
-            // Delete the profile store file
-            const dir = await localDataDir();
-            await remove(`${dir}/screenpipe/store-${profileName}.bin`);
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('delete_profile_file', { profileName });
             
-            // Persist changes
             await get()._persist();
           } catch (error) {
             // Rollback on error
@@ -157,7 +151,6 @@ export const useProfilesZustand = create<ProfilesStore>()(
               shortcuts: state.shortcuts,
               activeProfile: state.activeProfile
             });
-            console.error('Failed to delete profile:', error);
             throw error;
           }
         },
@@ -175,9 +168,7 @@ export const useProfilesZustand = create<ProfilesStore>()(
         
         // Internal methods
         _hydrate: async () => {
-          // Skip hydration during SSR
           if (typeof window === 'undefined') {
-            console.warn('Attempted to hydrate profiles during SSR - skipping');
             set({ isHydrated: true });
             return;
           }
@@ -191,7 +182,6 @@ export const useProfilesZustand = create<ProfilesStore>()(
               isHydrated: true 
             });
           } catch (error) {
-            console.error('Failed to hydrate profiles:', error);
             set({ 
               activeProfile: 'default',
               profiles: ['default'],

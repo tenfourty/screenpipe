@@ -703,6 +703,7 @@ async fn main() {
             commands::update_show_screenpipe_shortcut,
             commands::get_disk_usage,
             commands::open_pipe_window,
+            commands::delete_profile_file,
             get_log_files,
             upload_file_to_s3,
             update_global_shortcuts,
