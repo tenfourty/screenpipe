@@ -33,7 +33,7 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { invoke } from "@tauri-apps/api/core";
-import { useProfiles } from "@/lib/hooks/use-profiles";
+import { useProfilesZustand } from "@/lib/hooks/use-profiles-zustand";
 import { toast } from "./ui/use-toast";
 import { DataImportSection } from "./settings/data-import-section";
 import { Dialog, DialogContent } from "./ui/dialog";
@@ -52,13 +52,11 @@ type SettingsSection =
 
 export function Settings() {
   const { isOpen, setIsOpen: setSettingsOpen } = useSettingsDialog();
-  const {
-    profiles,
-    activeProfile,
-    createProfile,
-    deleteProfile,
-    setActiveProfile,
-  } = useProfiles();
+  const profiles = useProfilesZustand((state) => state.profiles);
+  const activeProfile = useProfilesZustand((state) => state.activeProfile);
+  const createProfile = useProfilesZustand((state) => state.createProfile);
+  const deleteProfile = useProfilesZustand((state) => state.deleteProfile);
+  const setActiveProfile = useProfilesZustand((state) => state.setActiveProfile);
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("account");
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);

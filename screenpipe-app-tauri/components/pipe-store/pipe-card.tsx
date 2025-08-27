@@ -15,7 +15,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { toast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
 import posthog from "posthog-js";
-import { useSettings } from "@/lib/hooks/use-settings";
+import { useSettingsZustand } from "@/lib/hooks/use-settings-zustand";
 import {
   Tooltip,
   TooltipContent,
@@ -89,7 +89,7 @@ export const PipeCard: React.FC<PipeCardProps> = ({
   onToggle,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { settings } = useSettings();
+  const settings = useSettingsZustand((state) => state.settings);
 
   const handleOpenWindow = async (e: React.MouseEvent) => {
     e.stopPropagation();
