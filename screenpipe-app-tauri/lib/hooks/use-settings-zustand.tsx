@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { LazyStore } from '@tauri-apps/plugin-store';
-import { localDataDir } from '@tauri-apps/api/path';
+import { localDataDir, appDataDir } from '@tauri-apps/api/path';
 import { platform } from '@tauri-apps/plugin-os';
 import { rename, remove, exists } from '@tauri-apps/plugin-fs';
 import merge from 'lodash/merge';
@@ -20,6 +20,7 @@ interface SettingsStore {
   resetSetting: (key: keyof Settings) => Promise<void>;
   loadUser: (token: string, forceReload?: boolean) => Promise<void>;
   reloadStore: () => Promise<void>;
+  getDataDir: () => Promise<string>;
   
   // Internal
   _hydrate: () => Promise<void>;
@@ -183,6 +184,31 @@ export const useSettingsZustand = create<SettingsStore>()(
         reloadStore: async () => {
           resetZustandStore();
           await get()._hydrate();
+        },
+        
+        getDataDir: async () => {
+          const currentSettings = get().settings;
+
+          if (
+            currentSettings.dataDir !== "default" &&
+            currentSettings.dataDir &&
+            currentSettings.dataDir !== ""
+          ) {
+            return currentSettings.dataDir;
+          }
+
+          // Use proper cross-platform app data directory
+          // This resolves to platform-appropriate locations:
+          // - macOS: ~/Library/Application Support/screenpipe
+          // - Windows: %APPDATA%/screenpipe  
+          // - Linux: ~/.local/share/screenpipe
+          try {
+            return await appDataDir();
+          } catch (error) {
+            console.error('Failed to get app data directory:', error);
+            // Fallback to local data directory if appDataDir fails
+            return await localDataDir();
+          }
         },
         
         // Internal methods

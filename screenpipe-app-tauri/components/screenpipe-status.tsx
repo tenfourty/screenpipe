@@ -26,8 +26,7 @@ const HealthStatus = ({ className }: { className?: string }) => {
   const { health } = useHealthCheck();
   const { isOpen, open, close } = useStatusDialog();
   const settings = useSettingsZustand((state) => state.settings);
-  // TODO: Implement getDataDir in Zustand store
-  const getDataDir = async () => settings.dataDir || "default";
+  const getDataDir = useSettingsZustand((state) => state.getDataDir);
   const [localDataDir, setLocalDataDir] = useState("");
 
   const handleOpenDataDir = async () => {
